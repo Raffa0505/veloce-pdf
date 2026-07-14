@@ -5,8 +5,10 @@ import { HIGHLIGHT_COLORS, newId } from "@/lib/annotations";
 
 interface Props {
   pageNumber: number;
-  width: number; // scaled px
-  height: number; // scaled px
+  widthPx: number;
+  heightPx: number;
+  pageWidthPt: number;
+  pageHeightPt: number;
   tool: Tool;
   highlightColor: HighlightColor;
   annotations: Annotation[];
@@ -18,8 +20,9 @@ interface Props {
 
 export function AnnotationLayer({
   pageNumber,
-  width,
-  height,
+  widthPx,
+  heightPx,
+  pageHeightPt,
   tool,
   highlightColor,
   annotations,
@@ -31,23 +34,25 @@ export function AnnotationLayer({
   const rootRef = useRef<HTMLDivElement | null>(null);
   const [openNote, setOpenNote] = useState<string | null>(null);
 
-  // Highlight: listen for text selection mouseup on the text layer of this page
+  const scale = heightPx / pageHeightPt;
+
   useEffect(() => {
     if (tool !== "highlight" || !textLayerEl || !rootRef.current) return;
-    const pageEl = rootRef.current.parentElement; // the page container
+    const pageEl = rootRef.current.parentElement;
     if (!pageEl) return;
 
     const onMouseUp = () => {
       const sel = window.getSelection();
       if (!sel || sel.isCollapsed || sel.rangeCount === 0) return;
       const range = sel.getRangeAt(0);
-      // Ensure selection is within this page's text layer
-      if (!textLayerEl.contains(range.startContainer) && !textLayerEl.contains(range.endContainer)) return;
-
+      if (
+        !textLayerEl.contains(range.startContainer) &&
+        !textLayerEl.contains(range.endContainer)
+      ) {
+        return;
+      }
       const pageRect = pageEl.getBoundingClientRect();
       const clientRects = Array.from(range.getClientRects());
-      if (clientRects.length === 0) return;
-
       const rects: NormRect[] = clientRects
         .filter((r) => r.width > 1 && r.height > 1)
         .map((r) => ({
@@ -57,7 +62,6 @@ export function AnnotationLayer({
           h: r.height / pageRect.height,
         }));
       if (rects.length === 0) return;
-
       onAdd({
         id: newId(),
         page: pageNumber,
@@ -103,25 +107,22 @@ export function AnnotationLayer({
       ref={rootRef}
       className="annotation-layer absolute inset-0"
       style={{
-        width,
-        height,
+        width: widthPx,
+        height: heightPx,
         pointerEvents: overlayInteractive ? "auto" : "none",
         cursor: tool === "note" ? "copy" : tool === "text" ? "text" : "default",
       }}
       onClick={handleLayerClick}
     >
-      {/* Highlights (behind text visually, but text layer is transparent so it works) */}
-      {annotations
-        .filter((a) => a.type === "highlight")
-        .map((a) => {
-          if (a.type !== "highlight") return null;
+      {annotations.map((a) => {
+        if (a.type === "highlight") {
           const color = HIGHLIGHT_COLORS[a.color].css;
           return (
-            <div key={a.id} className="group">
+            <div key={a.id}>
               {a.rects.map((r, i) => (
                 <div
                   key={i}
-                  className="absolute rounded-[1px] transition-shadow"
+                  className="absolute rounded-[1px]"
                   style={{
                     left: `${r.x * 100}%`,
                     top: `${r.y * 100}%`,
@@ -129,6 +130,7 @@ export function AnnotationLayer({
                     height: `${r.h * 100}%`,
                     background: color,
                     pointerEvents: "auto",
+                    mixBlendMode: "multiply",
                   }}
                   onContextMenu={(e) => {
                     e.preventDefault();
@@ -139,13 +141,8 @@ export function AnnotationLayer({
               ))}
             </div>
           );
-        })}
-
-      {/* Notes */}
-      {annotations
-        .filter((a) => a.type === "note")
-        .map((a) => {
-          if (a.type !== "note") return null;
+        }
+        if (a.type === "note") {
           return (
             <div
               key={a.id}
@@ -206,63 +203,37 @@ export function AnnotationLayer({
               )}
             </div>
           );
-        })}
-
-      {/* Text annotations */}
-      {annotations
-        .filter((a) => a.type === "text")
-        .map((a) => {
-          if (a.type !== "text") return null;
-          // fontSize is in PDF points; the page container is at CSS pixels ≈ points * scale.
-          // We derive css font size from height ratio: pageHeightPx / pageHeightPt = scale.
-          // Since we don't have scale here, approximate via height/(1/scale). Simpler:
-          // font size percent of page height:
-          const cssFontSize = (a.fontSize / (height / heightPtRatio(height, width))) * height;
-          void cssFontSize; // fallback below uses element height instead
+        }
+        if (a.type === "text") {
           return (
             <TextAnnotation
               key={a.id}
               a={a}
-              pageHeightPx={height}
+              scale={scale}
               onUpdate={(patch) => onUpdate(a.id, patch)}
               onDelete={() => onDelete(a.id)}
             />
           );
-        })}
+        }
+        return null;
+      })}
     </div>
   );
 }
 
-// Helper (kept for future use); currently unused.
-function heightPtRatio(hPx: number, _wPx: number) {
-  return hPx; // no-op placeholder
-}
-
 function TextAnnotation({
   a,
-  pageHeightPx,
+  scale,
   onUpdate,
   onDelete,
 }: {
   a: Extract<Annotation, { type: "text" }>;
-  pageHeightPx: number;
+  scale: number;
   onUpdate: (patch: Partial<Annotation>) => void;
   onDelete: () => void;
 }) {
   const [editing, setEditing] = useState(false);
-  // The page container is scaled from unscaled PDF points. We stored fontSize in points.
-  // pageHeightPx corresponds to (unscaled page height in pt) * scale.
-  // We don't know scale/pageHeightPt separately here — but the ratio (pageHeightPx / pageHeightPt)
-  // equals scale. Since text annotations use points, and we render inside a container whose
-  // pixel size already includes scale, the css font-size in px == fontSize * scale
-  //   = fontSize * (pageHeightPx / pageHeightPt).
-  // We don't have pageHeightPt in this layer; expose fontSize as % of page height instead
-  // by using CSS var trick: font-size relative to container.
-  // Simpler: pass through an inline size using em on parent set via font-size:
-  //   parent font-size = pageHeightPx px, child font-size = (fontSize/pageHeightPt) em
-  // But we still miss pageHeightPt. Practical compromise: assume A4-ish so 1pt ≈ pageHeightPx/842.
-  // For visual fidelity we instead let user resize via the drag handle; store fontSize proportionally to page height.
-  const fontPx = (a.fontSize / 842) * pageHeightPx;
+  const fontPx = a.fontSize * scale;
 
   return (
     <div
@@ -289,7 +260,7 @@ function TextAnnotation({
         <div
           onDoubleClick={() => setEditing(true)}
           style={{ fontSize: fontPx, lineHeight: 1.2 }}
-          className="whitespace-pre-wrap px-1 py-0.5 rounded-sm border border-transparent hover:border-primary/40 hover:bg-primary/5 text-black dark:text-black bg-white/0 cursor-text"
+          className="whitespace-pre-wrap px-1 py-0.5 rounded-sm border border-transparent hover:border-primary/40 hover:bg-primary/5 text-black cursor-text"
           title="Doppio clic per modificare"
         >
           {a.text}
