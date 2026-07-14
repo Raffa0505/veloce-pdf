@@ -18,6 +18,10 @@ import {
   MousePointer2,
   Hand,
   XCircle,
+  Highlighter,
+  StickyNote,
+  Type,
+  Download,
 } from "lucide-react";
 
 import { loadPdfjs } from "@/lib/pdfjs-loader";
@@ -26,6 +30,9 @@ import { DropZone } from "./DropZone";
 import { PdfPage } from "./PdfPage";
 import { PdfThumbnail } from "./PdfThumbnail";
 import { PdfOutline } from "./PdfOutline";
+import type { Annotation, HighlightColor, Tool } from "@/lib/annotations";
+import { HIGHLIGHT_COLORS } from "@/lib/annotations";
+import { exportAnnotatedPdf } from "@/lib/export-pdf";
 
 type SidebarTab = "thumbs" | "outline";
 
@@ -49,6 +56,11 @@ export function PdfViewer() {
   const [error, setError] = useState<string | null>(null);
   const [panMode, setPanMode] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [annTool, setAnnTool] = useState<Exclude<Tool, "pan" | "select"> | "select">("select");
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>("yellow");
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [originalBytes, setOriginalBytes] = useState<ArrayBuffer | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -58,14 +70,19 @@ export function PdfViewer() {
     setError(null);
     try {
       const buffer = await file.arrayBuffer();
+      // Keep a pristine copy for pdf-lib export; pdf.js may detach the buffer.
+      const forExport = buffer.slice(0);
+      const forPdfjs = buffer.slice(0);
       const pdfjs = await loadPdfjs();
-      const task = pdfjs.getDocument({ data: buffer });
+      const task = pdfjs.getDocument({ data: forPdfjs });
       const doc = await task.promise;
       setPdf(doc);
       setNumPages(doc.numPages);
       setFileName(file.name);
       setCurrentPage(1);
       setPageInput("1");
+      setAnnotations([]);
+      setOriginalBytes(forExport);
     } catch (e) {
       console.error(e);
       setError("Impossibile aprire il file. Assicurati che sia un PDF valido.");
@@ -86,8 +103,37 @@ export function PdfViewer() {
     setPanMode(false);
     setSpaceHeld(false);
     setError(null);
+    setAnnotations([]);
+    setOriginalBytes(null);
+    setAnnTool("select");
     pageRefs.current.clear();
   }, []);
+
+  const addAnnotation = useCallback((a: Annotation) => {
+    setAnnotations((prev) => [...prev, a]);
+  }, []);
+  const updateAnnotation = useCallback((id: string, patch: Partial<Annotation>) => {
+    setAnnotations((prev) =>
+      prev.map((a) => (a.id === id ? ({ ...a, ...patch } as Annotation) : a)),
+    );
+  }, []);
+  const deleteAnnotation = useCallback((id: string) => {
+    setAnnotations((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  const handleExport = useCallback(async () => {
+    if (!originalBytes) return;
+    setExporting(true);
+    try {
+      // pdf-lib needs its own buffer; copy so we can export again later.
+      await exportAnnotatedPdf(originalBytes.slice(0), annotations, fileName);
+    } catch (e) {
+      console.error(e);
+      setError("Errore durante l'esportazione del PDF annotato.");
+    } finally {
+      setExporting(false);
+    }
+  }, [originalBytes, annotations, fileName]);
 
   useEffect(() => {
     setPageInput(String(currentPage));
@@ -365,7 +411,10 @@ export function PdfViewer() {
           </button>
           <div className="h-6 w-px bg-border mx-1" />
           <button
-            onClick={() => setPanMode((v) => !v)}
+            onClick={() => {
+              setPanMode((v) => !v);
+              setAnnTool("select");
+            }}
             title={panMode ? "Strumento Mano attivo · clicca per selezionare testo (Tab, o tieni premuto Spazio)" : "Strumento Mano (Tab, o tieni premuto Spazio)"}
             className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
               panActive ? "bg-accent text-primary" : ""
@@ -375,6 +424,73 @@ export function PdfViewer() {
           >
             {panActive ? <Hand className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
           </button>
+          <div className="h-6 w-px bg-border mx-1" />
+          {/* Annotation tools */}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => {
+                setPanMode(false);
+                setAnnTool((t) => (t === "highlight" ? "select" : "highlight"));
+              }}
+              title="Evidenziatore · seleziona del testo per evidenziarlo"
+              className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
+                annTool === "highlight" ? "bg-accent text-primary" : ""
+              }`}
+              aria-label="Evidenziatore"
+              aria-pressed={annTool === "highlight"}
+            >
+              <Highlighter className="h-4 w-4" />
+            </button>
+            {annTool === "highlight" && (
+              <div className="flex items-center gap-1 px-1">
+                {(Object.keys(HIGHLIGHT_COLORS) as HighlightColor[]).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setHighlightColor(c)}
+                    className={`h-4 w-4 rounded-full border transition-transform ${
+                      highlightColor === c
+                        ? "ring-2 ring-primary ring-offset-1 ring-offset-toolbar scale-110"
+                        : "border-border hover:scale-110"
+                    }`}
+                    style={{ background: HIGHLIGHT_COLORS[c].css }}
+                    title={
+                      c === "yellow" ? "Giallo" : c === "green" ? "Verde" : "Blu"
+                    }
+                    aria-label={`Colore ${c}`}
+                  />
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => {
+                setPanMode(false);
+                setAnnTool((t) => (t === "note" ? "select" : "note"));
+              }}
+              title="Note adesive · clicca sul documento per aggiungere una nota"
+              className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
+                annTool === "note" ? "bg-accent text-primary" : ""
+              }`}
+              aria-label="Note adesive"
+              aria-pressed={annTool === "note"}
+            >
+              <StickyNote className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => {
+                setPanMode(false);
+                setAnnTool((t) => (t === "text" ? "select" : "text"));
+              }}
+              title="Inserisci testo · clicca dove vuoi scrivere"
+              className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
+                annTool === "text" ? "bg-accent text-primary" : ""
+              }`}
+              aria-label="Inserisci testo"
+              aria-pressed={annTool === "text"}
+            >
+              <Type className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="h-6 w-px bg-border mx-1" />
           <button
             onClick={() => setSearchOpen((v) => !v)}
             title="Cerca nel documento"
@@ -384,6 +500,20 @@ export function PdfViewer() {
             aria-label="Cerca nel documento"
           >
             <Search className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleExport}
+            title={annotations.length > 0 ? "Esporta PDF con annotazioni" : "Esporta PDF (nessuna annotazione)"}
+            disabled={!originalBytes || exporting}
+            className="p-2 rounded-md hover:bg-accent text-toolbar-foreground disabled:opacity-40 relative"
+            aria-label="Esporta PDF annotato"
+          >
+            <Download className="h-4 w-4" />
+            {annotations.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center">
+                {annotations.length}
+              </span>
+            )}
           </button>
           <div className="h-6 w-px bg-border mx-1" />
           <button
@@ -493,6 +623,12 @@ export function PdfViewer() {
                 searchQuery={searchQuery}
                 onVisible={handlePageVisible}
                 registerRef={registerPageRef}
+                tool={panActive ? "pan" : annTool}
+                highlightColor={highlightColor}
+                annotations={annotations.filter((a) => a.page === n)}
+                onAddAnnotation={addAnnotation}
+                onUpdateAnnotation={updateAnnotation}
+                onDeleteAnnotation={deleteAnnotation}
               />
             ))}
           </div>
