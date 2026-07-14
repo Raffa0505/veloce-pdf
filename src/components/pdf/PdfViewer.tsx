@@ -444,7 +444,7 @@ export function PdfViewer() {
 
         <main
           ref={scrollRef}
-          className={`flex-1 overflow-auto scrollbar-thin bg-viewer-bg ${panMode ? "pan-mode" : ""} ${isPanning ? "panning" : ""}`}
+          className={`flex-1 overflow-auto scrollbar-thin bg-viewer-bg ${panActive ? "pan-mode" : ""} ${isPanning ? "panning" : ""}`}
           style={{ scrollBehavior: isPanning ? "auto" : "smooth" }}
         >
           <div className="flex flex-col items-center gap-8 py-8 px-4">
