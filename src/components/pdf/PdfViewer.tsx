@@ -74,6 +74,21 @@ export function PdfViewer() {
     }
   }, []);
 
+  const closeFile = useCallback(() => {
+    setPdf(null);
+    setNumPages(0);
+    setCurrentPage(1);
+    setPageInput("1");
+    setFileName("");
+    setScale(1.2);
+    setSearchQuery("");
+    setSearchOpen(false);
+    setPanMode(false);
+    setSpaceHeld(false);
+    setError(null);
+    pageRefs.current.clear();
+  }, []);
+
   useEffect(() => {
     setPageInput(String(currentPage));
   }, [currentPage]);
