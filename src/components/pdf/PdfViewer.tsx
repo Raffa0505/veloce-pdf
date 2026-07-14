@@ -18,6 +18,10 @@ import {
   MousePointer2,
   Hand,
   XCircle,
+  Highlighter,
+  StickyNote,
+  Type,
+  Download,
 } from "lucide-react";
 
 import { loadPdfjs } from "@/lib/pdfjs-loader";
@@ -26,6 +30,9 @@ import { DropZone } from "./DropZone";
 import { PdfPage } from "./PdfPage";
 import { PdfThumbnail } from "./PdfThumbnail";
 import { PdfOutline } from "./PdfOutline";
+import type { Annotation, HighlightColor, Tool } from "@/lib/annotations";
+import { HIGHLIGHT_COLORS } from "@/lib/annotations";
+import { exportAnnotatedPdf } from "@/lib/export-pdf";
 
 type SidebarTab = "thumbs" | "outline";
 
