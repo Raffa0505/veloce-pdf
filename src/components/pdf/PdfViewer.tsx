@@ -476,7 +476,10 @@ export function PdfViewer() {
               <StickyNote className="h-4 w-4" />
             </button>
             <button
-              onClick={() => setAnnTool((t) => (t === "text" ? "select" : "text"))}
+              onClick={() => {
+                setPanMode(false);
+                setAnnTool((t) => (t === "text" ? "select" : "text"));
+              }}
               title="Inserisci testo · clicca dove vuoi scrivere"
               className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
                 annTool === "text" ? "bg-accent text-primary" : ""
