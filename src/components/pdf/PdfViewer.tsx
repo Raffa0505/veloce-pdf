@@ -70,14 +70,19 @@ export function PdfViewer() {
     setError(null);
     try {
       const buffer = await file.arrayBuffer();
+      // Keep a pristine copy for pdf-lib export; pdf.js may detach the buffer.
+      const forExport = buffer.slice(0);
+      const forPdfjs = buffer.slice(0);
       const pdfjs = await loadPdfjs();
-      const task = pdfjs.getDocument({ data: buffer });
+      const task = pdfjs.getDocument({ data: forPdfjs });
       const doc = await task.promise;
       setPdf(doc);
       setNumPages(doc.numPages);
       setFileName(file.name);
       setCurrentPage(1);
       setPageInput("1");
+      setAnnotations([]);
+      setOriginalBytes(forExport);
     } catch (e) {
       console.error(e);
       setError("Impossibile aprire il file. Assicurati che sia un PDF valido.");
@@ -98,8 +103,37 @@ export function PdfViewer() {
     setPanMode(false);
     setSpaceHeld(false);
     setError(null);
+    setAnnotations([]);
+    setOriginalBytes(null);
+    setAnnTool("select");
     pageRefs.current.clear();
   }, []);
+
+  const addAnnotation = useCallback((a: Annotation) => {
+    setAnnotations((prev) => [...prev, a]);
+  }, []);
+  const updateAnnotation = useCallback((id: string, patch: Partial<Annotation>) => {
+    setAnnotations((prev) =>
+      prev.map((a) => (a.id === id ? ({ ...a, ...patch } as Annotation) : a)),
+    );
+  }, []);
+  const deleteAnnotation = useCallback((id: string) => {
+    setAnnotations((prev) => prev.filter((a) => a.id !== id));
+  }, []);
+
+  const handleExport = useCallback(async () => {
+    if (!originalBytes) return;
+    setExporting(true);
+    try {
+      // pdf-lib needs its own buffer; copy so we can export again later.
+      await exportAnnotatedPdf(originalBytes.slice(0), annotations, fileName);
+    } catch (e) {
+      console.error(e);
+      setError("Errore durante l'esportazione del PDF annotato.");
+    } finally {
+      setExporting(false);
+    }
+  }, [originalBytes, annotations, fileName]);
 
   useEffect(() => {
     setPageInput(String(currentPage));
