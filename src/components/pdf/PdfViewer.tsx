@@ -15,6 +15,8 @@ import {
   ChevronUp,
   ChevronDown,
   FileText,
+  MousePointer2,
+  Hand,
 } from "lucide-react";
 
 import { loadPdfjs } from "@/lib/pdfjs-loader";
