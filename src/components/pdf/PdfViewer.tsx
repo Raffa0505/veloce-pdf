@@ -149,26 +149,44 @@ export function PdfViewer() {
     };
   }, [scale]);
 
-  // Tab key toggles pan mode
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const panActive = panMode || spaceHeld;
+
+  // Keyboard: Tab toggles pan mode, Space (hold) temporarily enables it
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "Tab") {
         e.preventDefault();
         setPanMode((v) => !v);
+      } else if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        setSpaceHeld(true);
       } else if (e.key === "Escape" && panMode) {
         setPanMode(false);
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.key === " ") {
+        setSpaceHeld(false);
+      }
+    };
+    const onBlur = () => setSpaceHeld(false);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
   }, [panMode]);
 
-  // Mouse drag panning when panMode is active
+  // Mouse drag panning when pan mode is active
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !panMode) return;
+    if (!el || !panActive) return;
     let startX = 0;
     let startY = 0;
     let startScrollLeft = 0;
@@ -204,7 +222,8 @@ export function PdfViewer() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [panMode]);
+  }, [panActive]);
+
 
   const handlePageVisible = useCallback((page: number) => {
     setCurrentPage(page);
@@ -320,14 +339,14 @@ export function PdfViewer() {
           <div className="h-6 w-px bg-border mx-1" />
           <button
             onClick={() => setPanMode((v) => !v)}
-            title={panMode ? "Modalità selezione testo (Tab)" : "Modalità mano / trascina (Tab)"}
+            title={panMode ? "Strumento Mano attivo · clicca per selezionare testo (Tab, o tieni premuto Spazio)" : "Strumento Mano (Tab, o tieni premuto Spazio)"}
             className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
-              panMode ? "bg-accent text-primary" : ""
+              panActive ? "bg-accent text-primary" : ""
             }`}
-            aria-label="Attiva/disattiva modalità mano"
+            aria-label="Strumento Mano"
             aria-pressed={panMode}
           >
-            {panMode ? <Hand className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
+            {panActive ? <Hand className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
           </button>
           <button
             onClick={() => setSearchOpen((v) => !v)}
@@ -425,7 +444,7 @@ export function PdfViewer() {
 
         <main
           ref={scrollRef}
-          className={`flex-1 overflow-auto scrollbar-thin bg-viewer-bg ${panMode ? "pan-mode" : ""} ${isPanning ? "panning" : ""}`}
+          className={`flex-1 overflow-auto scrollbar-thin bg-viewer-bg ${panActive ? "pan-mode" : ""} ${isPanning ? "panning" : ""}`}
           style={{ scrollBehavior: isPanning ? "auto" : "smooth" }}
         >
           <div className="flex flex-col items-center gap-8 py-8 px-4">
