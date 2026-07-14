@@ -539,6 +539,12 @@ export function PdfViewer() {
                 searchQuery={searchQuery}
                 onVisible={handlePageVisible}
                 registerRef={registerPageRef}
+                tool={panActive ? "pan" : annTool}
+                highlightColor={highlightColor}
+                annotations={annotations.filter((a) => a.page === n)}
+                onAddAnnotation={addAnnotation}
+                onUpdateAnnotation={updateAnnotation}
+                onDeleteAnnotation={deleteAnnotation}
               />
             ))}
           </div>
