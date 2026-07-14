@@ -170,3 +170,19 @@
 .textLayer .highlight.selected {
   background: orange;
 }
+
+/* Pan mode: disable text selection, show grab cursor */
+.pan-mode {
+  cursor: grab;
+}
+.pan-mode.panning {
+  cursor: grabbing;
+}
+.pan-mode .textLayer {
+  pointer-events: none;
+  user-select: none;
+}
+.pan-mode * {
+  user-select: none !important;
+}
+

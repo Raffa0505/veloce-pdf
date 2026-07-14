@@ -15,6 +15,8 @@ import {
   ChevronUp,
   ChevronDown,
   FileText,
+  MousePointer2,
+  Hand,
 } from "lucide-react";
 
 import { loadPdfjs } from "@/lib/pdfjs-loader";
@@ -44,6 +46,8 @@ export function PdfViewer() {
   const [pageInput, setPageInput] = useState("1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [panMode, setPanMode] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -145,9 +149,67 @@ export function PdfViewer() {
     };
   }, [scale]);
 
+  // Tab key toggles pan mode
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "Tab") {
+        e.preventDefault();
+        setPanMode((v) => !v);
+      } else if (e.key === "Escape" && panMode) {
+        setPanMode(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [panMode]);
+
+  // Mouse drag panning when panMode is active
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !panMode) return;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+    let dragging = false;
+
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      setIsPanning(true);
+      startX = e.clientX;
+      startY = e.clientY;
+      startScrollLeft = el.scrollLeft;
+      startScrollTop = el.scrollTop;
+      e.preventDefault();
+    };
+    const onMove = (e: MouseEvent) => {
+      if (!dragging) return;
+      el.scrollLeft = startScrollLeft - (e.clientX - startX);
+      el.scrollTop = startScrollTop - (e.clientY - startY);
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      setIsPanning(false);
+    };
+
+    el.addEventListener("mousedown", onDown);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      el.removeEventListener("mousedown", onDown);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [panMode]);
+
   const handlePageVisible = useCallback((page: number) => {
     setCurrentPage(page);
   }, []);
+
 
   const pages = useMemo(() => {
     if (!pdf) return [];
@@ -257,6 +319,17 @@ export function PdfViewer() {
           </button>
           <div className="h-6 w-px bg-border mx-1" />
           <button
+            onClick={() => setPanMode((v) => !v)}
+            title={panMode ? "Modalità selezione testo (Tab)" : "Modalità mano / trascina (Tab)"}
+            className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
+              panMode ? "bg-accent text-primary" : ""
+            }`}
+            aria-label="Attiva/disattiva modalità mano"
+            aria-pressed={panMode}
+          >
+            {panMode ? <Hand className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
+          </button>
+          <button
             onClick={() => setSearchOpen((v) => !v)}
             title="Cerca nel documento"
             className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
@@ -266,6 +339,7 @@ export function PdfViewer() {
           >
             <Search className="h-4 w-4" />
           </button>
+
         </div>
       </TopBar>
 
@@ -351,8 +425,8 @@ export function PdfViewer() {
 
         <main
           ref={scrollRef}
-          className="flex-1 overflow-auto scrollbar-thin bg-viewer-bg"
-          style={{ scrollBehavior: "smooth" }}
+          className={`flex-1 overflow-auto scrollbar-thin bg-viewer-bg ${panMode ? "pan-mode" : ""} ${isPanning ? "panning" : ""}`}
+          style={{ scrollBehavior: isPanning ? "auto" : "smooth" }}
         >
           <div className="flex flex-col items-center gap-8 py-8 px-4">
             {pages.map((n) => (
