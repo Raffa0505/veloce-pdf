@@ -462,7 +462,10 @@ export function PdfViewer() {
               </div>
             )}
             <button
-              onClick={() => setAnnTool((t) => (t === "note" ? "select" : "note"))}
+              onClick={() => {
+                setPanMode(false);
+                setAnnTool((t) => (t === "note" ? "select" : "note"));
+              }}
               title="Note adesive · clicca sul documento per aggiungere una nota"
               className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
                 annTool === "note" ? "bg-accent text-primary" : ""
