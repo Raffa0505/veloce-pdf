@@ -79,8 +79,13 @@ export function PdfPage({ pdf, pageNumber, scale, searchQuery, onVisible, regist
         textLayer.style.width = `${displayViewport.width}px`;
         textLayer.style.height = `${displayViewport.height}px`;
         const textContent = await page.getTextContent();
-        const pdfjs = await import("pdfjs-dist");
-        // @ts-expect-error - TextLayer signature
+        const pdfjs = (await import("pdfjs-dist")) as unknown as {
+          TextLayer: new (opts: {
+            textContentSource: unknown;
+            container: HTMLElement;
+            viewport: unknown;
+          }) => { render: () => Promise<void> };
+        };
         const tl = new pdfjs.TextLayer({
           textContentSource: textContent,
           container: textLayer,
