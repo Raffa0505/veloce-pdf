@@ -411,7 +411,10 @@ export function PdfViewer() {
           </button>
           <div className="h-6 w-px bg-border mx-1" />
           <button
-            onClick={() => setPanMode((v) => !v)}
+            onClick={() => {
+              setPanMode((v) => !v);
+              setAnnTool("select");
+            }}
             title={panMode ? "Strumento Mano attivo · clicca per selezionare testo (Tab, o tieni premuto Spazio)" : "Strumento Mano (Tab, o tieni premuto Spazio)"}
             className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
               panActive ? "bg-accent text-primary" : ""
