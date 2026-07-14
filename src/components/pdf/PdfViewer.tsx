@@ -149,9 +149,67 @@ export function PdfViewer() {
     };
   }, [scale]);
 
+  // Tab key toggles pan mode
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const tag = (e.target as HTMLElement)?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA") return;
+      if (e.key === "Tab") {
+        e.preventDefault();
+        setPanMode((v) => !v);
+      } else if (e.key === "Escape" && panMode) {
+        setPanMode(false);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [panMode]);
+
+  // Mouse drag panning when panMode is active
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el || !panMode) return;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+    let dragging = false;
+
+    const onDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      dragging = true;
+      setIsPanning(true);
+      startX = e.clientX;
+      startY = e.clientY;
+      startScrollLeft = el.scrollLeft;
+      startScrollTop = el.scrollTop;
+      e.preventDefault();
+    };
+    const onMove = (e: MouseEvent) => {
+      if (!dragging) return;
+      el.scrollLeft = startScrollLeft - (e.clientX - startX);
+      el.scrollTop = startScrollTop - (e.clientY - startY);
+    };
+    const onUp = () => {
+      if (!dragging) return;
+      dragging = false;
+      setIsPanning(false);
+    };
+
+    el.addEventListener("mousedown", onDown);
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      el.removeEventListener("mousedown", onDown);
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, [panMode]);
+
   const handlePageVisible = useCallback((page: number) => {
     setCurrentPage(page);
   }, []);
+
 
   const pages = useMemo(() => {
     if (!pdf) return [];
