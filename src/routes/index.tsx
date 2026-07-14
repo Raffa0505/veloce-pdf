@@ -14,11 +14,11 @@ export const Route = createFileRoute("/")({
         content:
           "Lettore PDF moderno, ultra-veloce e fluido. Anteprime, indice, ricerca e modalità scura. I file rimangono sul tuo dispositivo.",
       },
-      { property: "og:title", content: "Lettore PDF · Veloce e fluido" },
+      { property: "og:title", content: "Lettore PDF" },
       {
         property: "og:description",
         content:
-          "Apri, sfoglia e cerca nei tuoi PDF direttamente nel browser. Tutto rimane sul tuo dispositivo.",
+          "Lettore PDF moderno, ultra-veloce e fluido. Anteprime, indice, ricerca e modalità scura. I file rimangono sul tuo dispositivo.",
       },
     ],
   }),

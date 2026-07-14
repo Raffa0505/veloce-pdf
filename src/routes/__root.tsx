@@ -78,12 +78,16 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
       { title: "Lettore PDF" },
-      { name: "description", content: "Lettore PDF moderno, veloce e fluido nel tuo browser." },
+      { name: "description", content: "Lettore PDF moderno, ultra-veloce e fluido. Anteprime, indice, ricerca e modalità scura. I file rimangono sul tuo dispositivo." },
       { name: "author", content: "Lovable" },
       { property: "og:title", content: "Lettore PDF" },
-      { property: "og:description", content: "Lettore PDF moderno, veloce e fluido nel tuo browser." },
+      { property: "og:description", content: "Lettore PDF moderno, ultra-veloce e fluido. Anteprime, indice, ricerca e modalità scura. I file rimangono sul tuo dispositivo." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary_large_image" },
+      { name: "twitter:title", content: "Lettore PDF" },
+      { name: "twitter:description", content: "Lettore PDF moderno, ultra-veloce e fluido. Anteprime, indice, ricerca e modalità scura. I file rimangono sul tuo dispositivo." },
+      { property: "og:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/273f8815-2879-417e-a771-31d701c7d4ab/id-preview-7a4477bb--e786dc42-3ce4-46ba-820e-79d30ff0fe06.lovable.app-1784036618445.png" },
+      { name: "twitter:image", content: "https://pub-bb2e103a32db4e198524a2e9ed8f35b4.r2.dev/273f8815-2879-417e-a771-31d701c7d4ab/id-preview-7a4477bb--e786dc42-3ce4-46ba-820e-79d30ff0fe06.lovable.app-1784036618445.png" },
     ],
     links: [
       {
