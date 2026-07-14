@@ -319,6 +319,17 @@ export function PdfViewer() {
           </button>
           <div className="h-6 w-px bg-border mx-1" />
           <button
+            onClick={() => setPanMode((v) => !v)}
+            title={panMode ? "Modalità selezione testo (Tab)" : "Modalità mano / trascina (Tab)"}
+            className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
+              panMode ? "bg-accent text-primary" : ""
+            }`}
+            aria-label="Attiva/disattiva modalità mano"
+            aria-pressed={panMode}
+          >
+            {panMode ? <Hand className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
+          </button>
+          <button
             onClick={() => setSearchOpen((v) => !v)}
             title="Cerca nel documento"
             className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
@@ -328,6 +339,7 @@ export function PdfViewer() {
           >
             <Search className="h-4 w-4" />
           </button>
+
         </div>
       </TopBar>
 
