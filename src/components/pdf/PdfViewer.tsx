@@ -380,6 +380,15 @@ export function PdfViewer() {
           >
             <Search className="h-4 w-4" />
           </button>
+          <div className="h-6 w-px bg-border mx-1" />
+          <button
+            onClick={closeFile}
+            title="Chiudi file"
+            className="p-2 rounded-md hover:bg-accent text-toolbar-foreground"
+            aria-label="Chiudi file"
+          >
+            <XCircle className="h-4 w-4" />
+          </button>
 
         </div>
       </TopBar>
