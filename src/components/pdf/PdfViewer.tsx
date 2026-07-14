@@ -17,6 +17,7 @@ import {
   FileText,
   MousePointer2,
   Hand,
+  XCircle,
 } from "lucide-react";
 
 import { loadPdfjs } from "@/lib/pdfjs-loader";
@@ -71,6 +72,21 @@ export function PdfViewer() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  const closeFile = useCallback(() => {
+    setPdf(null);
+    setNumPages(0);
+    setCurrentPage(1);
+    setPageInput("1");
+    setFileName("");
+    setScale(1.2);
+    setSearchQuery("");
+    setSearchOpen(false);
+    setPanMode(false);
+    setSpaceHeld(false);
+    setError(null);
+    pageRefs.current.clear();
   }, []);
 
   useEffect(() => {
@@ -152,7 +168,7 @@ export function PdfViewer() {
   const [spaceHeld, setSpaceHeld] = useState(false);
   const panActive = panMode || spaceHeld;
 
-  // Keyboard: Tab toggles pan mode, Space (hold) temporarily enables it
+  // Keyboard: Tab toggles pan mode, Space (hold) temporarily enables it, +/- zoom
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -165,6 +181,12 @@ export function PdfViewer() {
         setSpaceHeld(true);
       } else if (e.key === "Escape" && panMode) {
         setPanMode(false);
+      } else if (e.key === "+" || e.key === "=" || e.key === "NumpadAdd") {
+        e.preventDefault();
+        handleZoomIn();
+      } else if (e.key === "-" || e.key === "NumpadSubtract") {
+        e.preventDefault();
+        handleZoomOut();
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
@@ -357,6 +379,15 @@ export function PdfViewer() {
             aria-label="Cerca nel documento"
           >
             <Search className="h-4 w-4" />
+          </button>
+          <div className="h-6 w-px bg-border mx-1" />
+          <button
+            onClick={closeFile}
+            title="Chiudi file"
+            className="p-2 rounded-md hover:bg-accent text-toolbar-foreground"
+            aria-label="Chiudi file"
+          >
+            <XCircle className="h-4 w-4" />
           </button>
 
         </div>
