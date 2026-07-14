@@ -428,7 +428,10 @@ export function PdfViewer() {
           {/* Annotation tools */}
           <div className="flex items-center gap-0.5">
             <button
-              onClick={() => setAnnTool((t) => (t === "highlight" ? "select" : "highlight"))}
+              onClick={() => {
+                setPanMode(false);
+                setAnnTool((t) => (t === "highlight" ? "select" : "highlight"));
+              }}
               title="Evidenziatore · seleziona del testo per evidenziarlo"
               className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
                 annTool === "highlight" ? "bg-accent text-primary" : ""
