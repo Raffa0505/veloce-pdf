@@ -149,26 +149,44 @@ export function PdfViewer() {
     };
   }, [scale]);
 
-  // Tab key toggles pan mode
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const panActive = panMode || spaceHeld;
+
+  // Keyboard: Tab toggles pan mode, Space (hold) temporarily enables it
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
+    const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
       if (tag === "INPUT" || tag === "TEXTAREA") return;
       if (e.key === "Tab") {
         e.preventDefault();
         setPanMode((v) => !v);
+      } else if (e.code === "Space" || e.key === " ") {
+        e.preventDefault();
+        setSpaceHeld(true);
       } else if (e.key === "Escape" && panMode) {
         setPanMode(false);
       }
     };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.code === "Space" || e.key === " ") {
+        setSpaceHeld(false);
+      }
+    };
+    const onBlur = () => setSpaceHeld(false);
+    window.addEventListener("keydown", onKeyDown);
+    window.addEventListener("keyup", onKeyUp);
+    window.addEventListener("blur", onBlur);
+    return () => {
+      window.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("keyup", onKeyUp);
+      window.removeEventListener("blur", onBlur);
+    };
   }, [panMode]);
 
-  // Mouse drag panning when panMode is active
+  // Mouse drag panning when pan mode is active
   useEffect(() => {
     const el = scrollRef.current;
-    if (!el || !panMode) return;
+    if (!el || !panActive) return;
     let startX = 0;
     let startY = 0;
     let startScrollLeft = 0;
@@ -204,7 +222,8 @@ export function PdfViewer() {
       window.removeEventListener("mousemove", onMove);
       window.removeEventListener("mouseup", onUp);
     };
-  }, [panMode]);
+  }, [panActive]);
+
 
   const handlePageVisible = useCallback((page: number) => {
     setCurrentPage(page);
