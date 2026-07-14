@@ -17,6 +17,7 @@ import {
   FileText,
   MousePointer2,
   Hand,
+  XCircle,
 } from "lucide-react";
 
 import { loadPdfjs } from "@/lib/pdfjs-loader";
