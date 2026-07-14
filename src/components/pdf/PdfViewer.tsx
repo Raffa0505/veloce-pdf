@@ -168,7 +168,7 @@ export function PdfViewer() {
   const [spaceHeld, setSpaceHeld] = useState(false);
   const panActive = panMode || spaceHeld;
 
-  // Keyboard: Tab toggles pan mode, Space (hold) temporarily enables it
+  // Keyboard: Tab toggles pan mode, Space (hold) temporarily enables it, +/- zoom
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
       const tag = (e.target as HTMLElement)?.tagName;
@@ -181,6 +181,12 @@ export function PdfViewer() {
         setSpaceHeld(true);
       } else if (e.key === "Escape" && panMode) {
         setPanMode(false);
+      } else if (e.key === "+" || e.key === "=" || e.key === "NumpadAdd") {
+        e.preventDefault();
+        handleZoomIn();
+      } else if (e.key === "-" || e.key === "NumpadSubtract") {
+        e.preventDefault();
+        handleZoomOut();
       }
     };
     const onKeyUp = (e: KeyboardEvent) => {
