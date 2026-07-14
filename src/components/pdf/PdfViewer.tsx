@@ -56,6 +56,11 @@ export function PdfViewer() {
   const [error, setError] = useState<string | null>(null);
   const [panMode, setPanMode] = useState(false);
   const [isPanning, setIsPanning] = useState(false);
+  const [annTool, setAnnTool] = useState<Exclude<Tool, "pan" | "select"> | "select">("select");
+  const [highlightColor, setHighlightColor] = useState<HighlightColor>("yellow");
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
+  const [originalBytes, setOriginalBytes] = useState<ArrayBuffer | null>(null);
+  const [exporting, setExporting] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
