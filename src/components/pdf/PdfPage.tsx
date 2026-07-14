@@ -1,5 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
+import { AnnotationLayer } from "./AnnotationLayer";
+import type { Annotation, HighlightColor, Tool } from "@/lib/annotations";
 
 interface Props {
   pdf: PDFDocumentProxy;
@@ -8,9 +10,28 @@ interface Props {
   searchQuery: string;
   onVisible: (page: number) => void;
   registerRef: (page: number, el: HTMLDivElement | null) => void;
+  tool: Tool;
+  highlightColor: HighlightColor;
+  annotations: Annotation[];
+  onAddAnnotation: (a: Annotation) => void;
+  onUpdateAnnotation: (id: string, patch: Partial<Annotation>) => void;
+  onDeleteAnnotation: (id: string) => void;
 }
 
-export function PdfPage({ pdf, pageNumber, scale, searchQuery, onVisible, registerRef }: Props) {
+export function PdfPage({
+  pdf,
+  pageNumber,
+  scale,
+  searchQuery,
+  onVisible,
+  registerRef,
+  tool,
+  highlightColor,
+  annotations,
+  onAddAnnotation,
+  onUpdateAnnotation,
+  onDeleteAnnotation,
+}: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const textLayerRef = useRef<HTMLDivElement | null>(null);
@@ -32,7 +53,6 @@ export function PdfPage({ pdf, pageNumber, scale, searchQuery, onVisible, regist
     };
   }, [pdf, pageNumber]);
 
-  // Visibility tracking
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -51,7 +71,6 @@ export function PdfPage({ pdf, pageNumber, scale, searchQuery, onVisible, regist
     return () => io.disconnect();
   }, [pageNumber, onVisible]);
 
-  // Render
   useEffect(() => {
     if (!page || !visible || !dims) return;
     const canvas = canvasRef.current;
@@ -71,7 +90,6 @@ export function PdfPage({ pdf, pageNumber, scale, searchQuery, onVisible, regist
 
     task.promise
       .then(async () => {
-        // Text layer
         const textLayer = textLayerRef.current;
         if (!textLayer) return;
         textLayer.innerHTML = "";
@@ -92,7 +110,6 @@ export function PdfPage({ pdf, pageNumber, scale, searchQuery, onVisible, regist
           viewport: displayViewport,
         });
         await tl.render();
-        // Search highlight
         if (searchQuery.trim()) {
           highlightText(textLayer, searchQuery.trim());
         }
@@ -120,11 +137,23 @@ export function PdfPage({ pdf, pageNumber, scale, searchQuery, onVisible, regist
       style={{ width, height }}
     >
       <canvas ref={canvasRef} className="block" style={{ width, height }} />
-      <div
-        ref={textLayerRef}
-        className="textLayer"
-        style={{ width, height }}
-      />
+      <div ref={textLayerRef} className="textLayer" style={{ width, height }} />
+      {dims && (
+        <AnnotationLayer
+          pageNumber={pageNumber}
+          widthPx={width}
+          heightPx={height}
+          pageWidthPt={dims.w}
+          pageHeightPt={dims.h}
+          tool={tool}
+          highlightColor={highlightColor}
+          annotations={annotations}
+          textLayerEl={textLayerRef.current}
+          onAdd={onAddAnnotation}
+          onUpdate={onUpdateAnnotation}
+          onDelete={onDeleteAnnotation}
+        />
+      )}
       <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-muted-foreground select-none">
         {pageNumber}
       </div>
@@ -148,5 +177,8 @@ function highlightText(container: HTMLElement, query: string) {
 }
 
 function escapeHtml(s: string) {
-  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+  return s.replace(
+    /[&<>"']/g,
+    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+  );
 }
