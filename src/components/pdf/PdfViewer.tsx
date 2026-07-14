@@ -46,6 +46,8 @@ export function PdfViewer() {
   const [pageInput, setPageInput] = useState("1");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [panMode, setPanMode] = useState(false);
+  const [isPanning, setIsPanning] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const pageRefs = useRef<Map<number, HTMLDivElement>>(new Map());
