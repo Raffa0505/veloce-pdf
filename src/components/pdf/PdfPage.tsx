@@ -1,0 +1,147 @@
+import { useEffect, useRef, useState } from "react";
+import type { PDFDocumentProxy, PDFPageProxy } from "pdfjs-dist";
+
+interface Props {
+  pdf: PDFDocumentProxy;
+  pageNumber: number;
+  scale: number;
+  searchQuery: string;
+  onVisible: (page: number) => void;
+  registerRef: (page: number, el: HTMLDivElement | null) => void;
+}
+
+export function PdfPage({ pdf, pageNumber, scale, searchQuery, onVisible, registerRef }: Props) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const textLayerRef = useRef<HTMLDivElement | null>(null);
+  const [page, setPage] = useState<PDFPageProxy | null>(null);
+  const [dims, setDims] = useState<{ w: number; h: number } | null>(null);
+  const [visible, setVisible] = useState(false);
+  const renderTaskRef = useRef<{ cancel: () => void } | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    pdf.getPage(pageNumber).then((p) => {
+      if (cancelled) return;
+      setPage(p);
+      const vp = p.getViewport({ scale: 1 });
+      setDims({ w: vp.width, h: vp.height });
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [pdf, pageNumber]);
+
+  // Visibility tracking
+  useEffect(() => {
+    const el = containerRef.current;
+    if (!el) return;
+    const io = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) {
+          setVisible(e.isIntersecting);
+          if (e.isIntersecting && e.intersectionRatio > 0.5) {
+            onVisible(pageNumber);
+          }
+        }
+      },
+      { rootMargin: "600px 0px", threshold: [0, 0.5, 1] },
+    );
+    io.observe(el);
+    return () => io.disconnect();
+  }, [pageNumber, onVisible]);
+
+  // Render
+  useEffect(() => {
+    if (!page || !visible || !dims) return;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const viewport = page.getViewport({ scale: scale * dpr });
+    canvas.width = viewport.width;
+    canvas.height = viewport.height;
+    canvas.style.width = `${dims.w * scale}px`;
+    canvas.style.height = `${dims.h * scale}px`;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    renderTaskRef.current?.cancel();
+    const task = page.render({ canvasContext: ctx, viewport, canvas });
+    renderTaskRef.current = task;
+
+    task.promise
+      .then(async () => {
+        // Text layer
+        const textLayer = textLayerRef.current;
+        if (!textLayer) return;
+        textLayer.innerHTML = "";
+        const displayViewport = page.getViewport({ scale });
+        textLayer.style.width = `${displayViewport.width}px`;
+        textLayer.style.height = `${displayViewport.height}px`;
+        const textContent = await page.getTextContent();
+        const pdfjs = await import("pdfjs-dist");
+        // @ts-expect-error - TextLayer signature
+        const tl = new pdfjs.TextLayer({
+          textContentSource: textContent,
+          container: textLayer,
+          viewport: displayViewport,
+        });
+        await tl.render();
+        // Search highlight
+        if (searchQuery.trim()) {
+          highlightText(textLayer, searchQuery.trim());
+        }
+      })
+      .catch((err) => {
+        if (err?.name !== "RenderingCancelledException") console.error(err);
+      });
+
+    return () => {
+      task.cancel();
+    };
+  }, [page, visible, scale, dims, searchQuery]);
+
+  const width = dims ? dims.w * scale : 600;
+  const height = dims ? dims.h * scale : 800;
+
+  return (
+    <div
+      ref={(el) => {
+        containerRef.current = el;
+        registerRef(pageNumber, el);
+      }}
+      data-page-number={pageNumber}
+      className="relative bg-white pdf-page-shadow rounded-sm mx-auto"
+      style={{ width, height }}
+    >
+      <canvas ref={canvasRef} className="block" style={{ width, height }} />
+      <div
+        ref={textLayerRef}
+        className="textLayer"
+        style={{ width, height }}
+      />
+      <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-xs text-muted-foreground select-none">
+        {pageNumber}
+      </div>
+    </div>
+  );
+}
+
+function highlightText(container: HTMLElement, query: string) {
+  const q = query.toLowerCase();
+  const spans = container.querySelectorAll("span");
+  spans.forEach((span) => {
+    const text = span.textContent || "";
+    const idx = text.toLowerCase().indexOf(q);
+    if (idx >= 0) {
+      const before = text.slice(0, idx);
+      const match = text.slice(idx, idx + q.length);
+      const after = text.slice(idx + q.length);
+      span.innerHTML = `${escapeHtml(before)}<span class="highlight">${escapeHtml(match)}</span>${escapeHtml(after)}`;
+    }
+  });
+}
+
+function escapeHtml(s: string) {
+  return s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+}
