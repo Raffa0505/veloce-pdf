@@ -421,6 +421,64 @@ export function PdfViewer() {
           >
             {panActive ? <Hand className="h-4 w-4" /> : <MousePointer2 className="h-4 w-4" />}
           </button>
+          <div className="h-6 w-px bg-border mx-1" />
+          {/* Annotation tools */}
+          <div className="flex items-center gap-0.5">
+            <button
+              onClick={() => setAnnTool((t) => (t === "highlight" ? "select" : "highlight"))}
+              title="Evidenziatore · seleziona del testo per evidenziarlo"
+              className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
+                annTool === "highlight" ? "bg-accent text-primary" : ""
+              }`}
+              aria-label="Evidenziatore"
+              aria-pressed={annTool === "highlight"}
+            >
+              <Highlighter className="h-4 w-4" />
+            </button>
+            {annTool === "highlight" && (
+              <div className="flex items-center gap-1 px-1">
+                {(Object.keys(HIGHLIGHT_COLORS) as HighlightColor[]).map((c) => (
+                  <button
+                    key={c}
+                    onClick={() => setHighlightColor(c)}
+                    className={`h-4 w-4 rounded-full border transition-transform ${
+                      highlightColor === c
+                        ? "ring-2 ring-primary ring-offset-1 ring-offset-toolbar scale-110"
+                        : "border-border hover:scale-110"
+                    }`}
+                    style={{ background: HIGHLIGHT_COLORS[c].css }}
+                    title={
+                      c === "yellow" ? "Giallo" : c === "green" ? "Verde" : "Blu"
+                    }
+                    aria-label={`Colore ${c}`}
+                  />
+                ))}
+              </div>
+            )}
+            <button
+              onClick={() => setAnnTool((t) => (t === "note" ? "select" : "note"))}
+              title="Note adesive · clicca sul documento per aggiungere una nota"
+              className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
+                annTool === "note" ? "bg-accent text-primary" : ""
+              }`}
+              aria-label="Note adesive"
+              aria-pressed={annTool === "note"}
+            >
+              <StickyNote className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => setAnnTool((t) => (t === "text" ? "select" : "text"))}
+              title="Inserisci testo · clicca dove vuoi scrivere"
+              className={`p-2 rounded-md hover:bg-accent text-toolbar-foreground ${
+                annTool === "text" ? "bg-accent text-primary" : ""
+              }`}
+              aria-label="Inserisci testo"
+              aria-pressed={annTool === "text"}
+            >
+              <Type className="h-4 w-4" />
+            </button>
+          </div>
+          <div className="h-6 w-px bg-border mx-1" />
           <button
             onClick={() => setSearchOpen((v) => !v)}
             title="Cerca nel documento"
@@ -430,6 +488,20 @@ export function PdfViewer() {
             aria-label="Cerca nel documento"
           >
             <Search className="h-4 w-4" />
+          </button>
+          <button
+            onClick={handleExport}
+            title={annotations.length > 0 ? "Esporta PDF con annotazioni" : "Esporta PDF (nessuna annotazione)"}
+            disabled={!originalBytes || exporting}
+            className="p-2 rounded-md hover:bg-accent text-toolbar-foreground disabled:opacity-40 relative"
+            aria-label="Esporta PDF annotato"
+          >
+            <Download className="h-4 w-4" />
+            {annotations.length > 0 && (
+              <span className="absolute -top-0.5 -right-0.5 h-4 min-w-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-semibold flex items-center justify-center">
+                {annotations.length}
+              </span>
+            )}
           </button>
           <div className="h-6 w-px bg-border mx-1" />
           <button
