@@ -8,7 +8,7 @@ const PdfViewer = lazy(() =>
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "Lettore PDF · Veloce e fluido" },
+      { title: "Lettore PDF" },
       {
         name: "description",
         content:

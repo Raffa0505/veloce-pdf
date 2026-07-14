@@ -168,6 +168,11 @@ export function PdfViewer() {
   const [spaceHeld, setSpaceHeld] = useState(false);
   const panActive = panMode || spaceHeld;
 
+  // Dynamic browser tab title based on opened file
+  useEffect(() => {
+    document.title = fileName ? `Lettore PDF - ${fileName}` : "Lettore PDF";
+  }, [fileName]);
+
   // Keyboard: Tab toggles pan mode, Space (hold) temporarily enables it, +/- zoom
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
